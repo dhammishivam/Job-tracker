@@ -52,6 +52,28 @@ function StatusBadge({ status, onChange, id }) {
   );
 }
 
+const skeletonBar = (w, h = 10, mb = 0) => ({
+  background: "#1a1a2a", borderRadius: 5, width: w, height: h, marginBottom: mb,
+  animation: "skelPulse 1.4s ease-in-out infinite",
+});
+
+function SkeletonCard() {
+  return (
+    <div style={{ background: "#0a0a12", border: "1px solid #1a1a2a", borderRadius: 12, padding: "18px 20px" }}>
+      <div style={skeletonBar("70%", 12, 10)} />
+      <div style={skeletonBar("45%", 10, 12)} />
+      <div style={{ display: "flex", gap: 10, marginBottom: 16 }}>
+        <div style={skeletonBar("38%", 8)} />
+        <div style={skeletonBar("30%", 8)} />
+      </div>
+      <div style={{ display: "flex", gap: 8 }}>
+        <div style={skeletonBar(72, 28)} />
+        <div style={skeletonBar(60, 28)} />
+      </div>
+    </div>
+  );
+}
+
 export default function App() {
   const [jobs, setJobs] = useState([]);
   const [nextId, setNextId] = useState(1);
@@ -67,6 +89,7 @@ export default function App() {
   const [scraping, setScraping] = useState(false);
   const [scrapeError, setScrapeError] = useState(null);
   const [showScraped, setShowScraped] = useState(false);
+  const [elapsed, setElapsed] = useState(0);
 
   useEffect(() => {
     try {
@@ -85,6 +108,12 @@ export default function App() {
       }
     } catch {}
   }, []);
+
+  useEffect(() => {
+    if (!scraping) { setElapsed(0); return; }
+    const t = setInterval(() => setElapsed(s => s + 1), 1000);
+    return () => clearInterval(t);
+  }, [scraping]);
 
   const pollRef = useRef(null);
   const runMetaRef = useRef(null);
@@ -312,6 +341,31 @@ export default function App() {
           </tbody>
         </table>
       </div>
+
+      {/* Pulse animation keyframes */}
+      <style>{`@keyframes skelPulse{0%,100%{opacity:.35}50%{opacity:.7}}`}</style>
+
+      {/* In-progress skeleton UI */}
+      {scraping && (
+        <div style={{ marginTop: 28 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 14 }}>
+            <h2 style={{ fontSize: 16, fontWeight: 700, color: "#e0e0ff", margin: 0, letterSpacing: "-0.02em" }}>
+              LinkedIn Jobs — Senior Android Developer · India
+            </h2>
+            <span style={{
+              fontSize: 11, background: "#0d1a0d", color: "#3dd68c", border: "1px solid #1e4a1e",
+              borderRadius: 5, padding: "2px 8px", fontWeight: 600,
+              animation: "skelPulse 1.4s ease-in-out infinite",
+            }}>Searching…</span>
+            <span style={{ fontSize: 11, color: "#404060", fontFamily: "'DM Mono', monospace" }}>
+              {Math.floor(elapsed / 60)}:{String(elapsed % 60).padStart(2, "0")} elapsed
+            </span>
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: 12 }}>
+            {Array.from({ length: 6 }).map((_, i) => <SkeletonCard key={i} />)}
+          </div>
+        </div>
+      )}
 
       {/* Scrape error */}
       {scrapeError && (
