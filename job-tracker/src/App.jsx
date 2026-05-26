@@ -350,7 +350,7 @@ export default function App() {
         <div style={{ marginTop: 28 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 14 }}>
             <h2 style={{ fontSize: 16, fontWeight: 700, color: "#e0e0ff", margin: 0, letterSpacing: "-0.02em" }}>
-              LinkedIn Jobs — Senior Android Developer · India
+              LinkedIn Jobs — Android Dev / Senior SWE · NCR & Hyderabad
             </h2>
             <span style={{
               fontSize: 11, background: "#0d1a0d", color: "#3dd68c", border: "1px solid #1e4a1e",
@@ -380,7 +380,7 @@ export default function App() {
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
               <h2 style={{ fontSize: 16, fontWeight: 700, color: "#e0e0ff", margin: 0, letterSpacing: "-0.02em" }}>
-                LinkedIn Jobs — Senior Android Developer · India
+                LinkedIn Jobs — Android Dev / Senior SWE · NCR & Hyderabad
               </h2>
               {scrapeTime && (
                 <span style={{ fontSize: 11, color: "#404060", fontWeight: 500 }}>
