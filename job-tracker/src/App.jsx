@@ -62,12 +62,74 @@ export default function App() {
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ company: "", role: "", platform: "LinkedIn", date: today(), status: "saved", followup: "", notes: "" });
 
+  const [scrapedJobs, setScrapedJobs] = useState(null);
+  const [scrapeTime, setScrapeTime] = useState(null);
+  const [scraping, setScraping] = useState(false);
+  const [scrapeError, setScrapeError] = useState(null);
+  const [showScraped, setShowScraped] = useState(false);
+
   useEffect(() => {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
       if (raw) { const d = JSON.parse(raw); setJobs(d.jobs || []); setNextId(d.nextId || 1); }
     } catch {}
   }, []);
+
+  // Load cached scrape results from localStorage on mount
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("scrape-cache");
+      if (raw) {
+        const { jobs, time } = JSON.parse(raw);
+        setScrapedJobs(jobs); setScrapeTime(time); setShowScraped(true);
+      }
+    } catch {}
+  }, []);
+
+  const pollRef = useRef(null);
+  const runMetaRef = useRef(null);
+
+  const stopPolling = () => { if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; } };
+
+  const checkStatus = async () => {
+    const meta = runMetaRef.current;
+    if (!meta) return;
+    try {
+      const res = await fetch(`/api/scrape-jobs?runId=${meta.runId}&datasetId=${meta.datasetId}`);
+      const data = await res.json();
+      if (data.status === "done") {
+        setScrapedJobs(data.jobs);
+        const t = Date.now();
+        setScrapeTime(t);
+        setShowScraped(true);
+        setScraping(false);
+        stopPolling();
+        runMetaRef.current = null;
+        try { localStorage.setItem("scrape-cache", JSON.stringify({ jobs: data.jobs, time: t })); } catch {}
+      } else if (data.status === "failed") {
+        setScrapeError(data.error || "Scrape failed");
+        setScraping(false);
+        stopPolling();
+        runMetaRef.current = null;
+      }
+    } catch {}
+  };
+
+  const scrapeJobs = async () => {
+    setScraping(true);
+    setScrapeError(null);
+    try {
+      const res = await fetch("/api/scrape-jobs", { method: "POST" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Scrape failed");
+      runMetaRef.current = { runId: data.runId, datasetId: data.datasetId };
+      stopPolling();
+      pollRef.current = setInterval(checkStatus, 8000);
+    } catch (e) {
+      setScrapeError(e.message);
+      setScraping(false);
+    }
+  };
 
   const persist = (newJobs, newNextId) => {
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify({ jobs: newJobs, nextId: newNextId })); } catch {}
@@ -121,12 +183,22 @@ export default function App() {
           <div style={{ fontSize: 11, color: "#404060", fontWeight: 600, letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: 4 }}>Shivam Dhammi</div>
           <h1 style={{ fontSize: 26, fontWeight: 700, color: "#e0e0ff", margin: 0, letterSpacing: "-0.03em" }}>Job Tracker</h1>
         </div>
-        <button onClick={exportCSV} style={{
-          background: "transparent", border: "1px solid #1e1e2e", borderRadius: 8,
-          color: "#555577", padding: "8px 16px", fontSize: 12, cursor: "pointer",
-          fontFamily: "inherit", fontWeight: 600, letterSpacing: "0.04em",
-          display: "flex", alignItems: "center", gap: 6,
-        }}>↓ Export CSV</button>
+        <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+          <button onClick={scrapeJobs} disabled={scraping} style={{
+            background: scraping ? "#0d1a0d" : "#0d1a0d", border: `1px solid ${scraping ? "#1a4a1a" : "#1e4a1e"}`,
+            borderRadius: 8, color: scraping ? "#3a7a3a" : "#3dd68c", padding: "8px 16px", fontSize: 12,
+            cursor: scraping ? "not-allowed" : "pointer", fontFamily: "inherit", fontWeight: 600,
+            letterSpacing: "0.04em", display: "flex", alignItems: "center", gap: 6, opacity: scraping ? 0.7 : 1,
+          }}>
+            {scraping ? "⏳ Scraping…" : "⚡ Scrape LinkedIn Jobs"}
+          </button>
+          <button onClick={exportCSV} style={{
+            background: "transparent", border: "1px solid #1e1e2e", borderRadius: 8,
+            color: "#555577", padding: "8px 16px", fontSize: 12, cursor: "pointer",
+            fontFamily: "inherit", fontWeight: 600, letterSpacing: "0.04em",
+            display: "flex", alignItems: "center", gap: 6,
+          }}>↓ Export CSV</button>
+        </div>
       </div>
 
       {/* Stats */}
@@ -240,6 +312,81 @@ export default function App() {
           </tbody>
         </table>
       </div>
+
+      {/* Scrape error */}
+      {scrapeError && (
+        <div style={{ marginTop: 16, background: "#1f0808", border: "1px solid #7a1a1a", borderRadius: 10, padding: "12px 18px", color: "#f56565", fontSize: 13 }}>
+          <strong>Scrape error:</strong> {scrapeError}
+        </div>
+      )}
+
+      {/* Scraped LinkedIn Jobs */}
+      {(scrapedJobs !== null) && (
+        <div style={{ marginTop: 28 }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <h2 style={{ fontSize: 16, fontWeight: 700, color: "#e0e0ff", margin: 0, letterSpacing: "-0.02em" }}>
+                LinkedIn Jobs — Senior Android Developer · India
+              </h2>
+              {scrapeTime && (
+                <span style={{ fontSize: 11, color: "#404060", fontWeight: 500 }}>
+                  Last scraped {new Date(scrapeTime).toLocaleString()}
+                </span>
+              )}
+              <span style={{ fontSize: 11, background: "#0d1a0d", color: "#3dd68c", border: "1px solid #1e4a1e", borderRadius: 5, padding: "2px 8px", fontWeight: 600 }}>
+                {scrapedJobs.length} results
+              </span>
+            </div>
+            <button onClick={() => setShowScraped(v => !v)} style={{
+              background: "transparent", border: "1px solid #1e1e2e", borderRadius: 7,
+              color: "#404060", padding: "5px 12px", fontSize: 12, cursor: "pointer", fontFamily: "inherit",
+            }}>
+              {showScraped ? "Hide" : "Show"}
+            </button>
+          </div>
+
+          {showScraped && (
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: 12 }}>
+              {scrapedJobs.length === 0 ? (
+                <div style={{ color: "#404060", fontSize: 13, gridColumn: "1/-1", padding: "24px 0" }}>No results returned. The actor may use different field names — check the Apify console.</div>
+              ) : scrapedJobs.map((job, i) => (
+                <div key={i} style={{ background: "#0a0a12", border: "1px solid #1a1a2a", borderRadius: 12, padding: "18px 20px", display: "flex", flexDirection: "column", gap: 6 }}>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: "#d0d0f0", lineHeight: 1.3 }}>{job.title || "Untitled"}</div>
+                  <div style={{ fontSize: 13, color: "#5bb8f5", fontWeight: 600 }}>{job.company || "—"}</div>
+                  <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 2 }}>
+                    {job.location && (
+                      <span style={{ fontSize: 11, color: "#555577" }}>📍 {job.location}</span>
+                    )}
+                    {job.postedAt && (
+                      <span style={{ fontSize: 11, color: "#555577" }}>🕐 {job.postedAt}</span>
+                    )}
+                  </div>
+                  <div style={{ marginTop: 8, display: "flex", gap: 8 }}>
+                    {job.applyUrl ? (
+                      <a href={job.applyUrl} target="_blank" rel="noopener noreferrer" style={{
+                        fontSize: 12, fontWeight: 600, color: "#9090ff", background: "#131325",
+                        border: "1px solid #2020a0", borderRadius: 7, padding: "6px 14px",
+                        textDecoration: "none", display: "inline-block",
+                      }}>Apply →</a>
+                    ) : (
+                      <span style={{ fontSize: 12, color: "#2a2a4a" }}>No link</span>
+                    )}
+                    <button onClick={() => {
+                      setForm(f => ({ ...f, company: job.company || "", role: job.title || "", platform: "LinkedIn", date: today(), status: "saved" }));
+                      setShowForm(true);
+                      window.scrollTo({ top: 0, behavior: "smooth" });
+                    }} style={{
+                      fontSize: 12, color: "#555577", background: "transparent",
+                      border: "1px solid #1a1a2a", borderRadius: 7, padding: "6px 12px",
+                      cursor: "pointer", fontFamily: "inherit",
+                    }}>+ Track</button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Notes modal */}
       {notesModal && (
