@@ -1,9 +1,19 @@
-// Single URL using LinkedIn's geoId to cover all 5 locations at once:
-//   100899423 = Gurugram, 104869687 = Noida, 105556991 = Hyderabad,
-//   106187582 = Delhi, 115918471 = New Delhi
-// f_JT=F → Full-time | f_WT=1,2,3 → On-site, Remote, Hybrid | f_TPR=r604800 → Last 7 days
+// LinkedIn filter codes:
+//   f_JT=F         → Full-time
+//   f_WT=1,2,3     → On-site, Remote, Hybrid
+//   f_TPR=r604800  → Posted in last 7 days
+
+const BASE = 'https://www.linkedin.com/jobs/search/'
+const COMMON = 'f_JT=F&f_WT=1%2C2%2C3&f_TPR=r604800'
+
+// Delhi NCR covers Gurugram, Noida, New Delhi, Delhi in one search
 const SEARCH_URLS = [
-  'https://www.linkedin.com/jobs/search/?keywords=Software%20Engineer%20OR%20Android%20Developer%20OR%20Senior%20Software%20Engineer&geoId=100899423%2C104869687%2C105556991%2C106187582%2C115918471&f_JT=F&f_WT=1%2C2%2C3&f_TPR=r604800',
+  `${BASE}?keywords=Android%20Developer&location=Delhi%20NCR&${COMMON}`,
+  `${BASE}?keywords=Senior%20Software%20Engineer&location=Delhi%20NCR&${COMMON}`,
+  `${BASE}?keywords=Android%20Developer&location=Hyderabad%2C%20Telangana%2C%20India&${COMMON}`,
+  `${BASE}?keywords=Senior%20Software%20Engineer&location=Hyderabad%2C%20Telangana%2C%20India&${COMMON}`,
+  `${BASE}?keywords=Android%20Developer&location=Bengaluru%2C%20Karnataka%2C%20India&${COMMON}`,
+  `${BASE}?keywords=Senior%20Software%20Engineer&location=Bengaluru%2C%20Karnataka%2C%20India&${COMMON}`,
 ]
 
 function normalizeJobs(items) {
