@@ -1,0 +1,6 @@
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: #07070f; color: #c0c0e0; font-family: 'DM Sans', sans-serif; }
+input, select, textarea, button { font-family: 'DM Sans', sans-serif; }
+::-webkit-scrollbar { width: 6px; } 
+::-webkit-scrollbar-track { background: #0f0f17; }
+::-webkit-scrollbar-thumb { background: #2a2a4a; border-radius: 3px; }
